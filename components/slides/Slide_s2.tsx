@@ -2,19 +2,19 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useEffect, useRef } from 'react';
 import mermaid from 'mermaid';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 export default function Slide() {
   const markdown = `- **Dev environment as code**
   - Declarative, versioned setup defined by the Dev Container Specification (containers.dev)
   - A devcontainer.json declares tools, runtimes, extensions, ports, and setup scripts
   - Runs consistently in VS Code Remote - Containers, GitHub Codespaces, or Dev Container CLI
-
 - **Why it matters**
   - Uniformity across macOS/Windows/Linux → fewer “works on my machine” issues
   - Repeatability across machines, branches, and CI
   - Speed: faster onboarding and context switches with prebuilds and lifecycle hooks
   - Portability: config lives in the repo; great for teams and open source
-
 - **Minimal example**
 \`\`\`json
 {
@@ -29,7 +29,6 @@ export default function Slide() {
   }
 }
 \`\`\`
-
 \`\`\`mermaid
 flowchart LR
   Repo[Repo with .devcontainer] --> Manifest[devcontainer.json + optional Dockerfile/Features]
@@ -41,7 +40,6 @@ flowchart LR
   Cloud --> Same
   CI --> Same
 \`\`\`
-
 - **Key outcomes**
   - Hours-to-minutes onboarding; fewer env-related bugs
   - Consistent app + DB via optional docker-compose
@@ -96,12 +94,21 @@ flowchart LR
       <ReactMarkdown 
         remarkPlugins={[remarkGfm]}
         components={{
-          code({node, className, children, ...props}: any) {
-            const match = /language-(w+)/.exec(className || '');
+          code({node, inline, className, children, ...props}: any) {
+            const match = /language-(\w+)/.exec(className || '');
             const language = match ? match[1] : '';
-            const isInline = !className;
             
-            if (!isInline && language === 'mermaid') {
+            // Handle inline code
+            if (inline) {
+              return (
+                <code className={className} {...props}>
+                  {children}
+                </code>
+              );
+            }
+            
+            // Handle mermaid diagrams
+            if (language === 'mermaid') {
               return (
                 <pre className="language-mermaid">
                   <code>{String(children).replace(/\n$/, '')}</code>
@@ -109,10 +116,28 @@ flowchart LR
               );
             }
             
+            // Handle code blocks with syntax highlighting
+            if (language) {
+              return (
+                <SyntaxHighlighter
+                  language={language}
+                  style={atomDark}
+                  showLineNumbers={true}
+                  PreTag="div"
+                  {...props}
+                >
+                  {String(children).replace(/\n$/, '')}
+                </SyntaxHighlighter>
+              );
+            }
+            
+            // Default code block without highlighting
             return (
-              <code className={className} {...props}>
-                {children}
-              </code>
+              <pre>
+                <code className={className} {...props}>
+                  {children}
+                </code>
+              </pre>
             );
           }
         }}

@@ -2,6 +2,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useEffect, useRef } from 'react';
 import mermaid from 'mermaid';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 export default function Slide() {
   const markdown = `- Common pitfalls and quick fixes
@@ -15,7 +17,6 @@ export default function Slide() {
     - Fix: Use .env (git-ignored) and IDE/platform secret stores; never bake secrets into images.
   - Drift between dev and CI
     - Fix: Validate/build with Dev Container CLI in CI; pin versions; run tests inside the container.
-
 \`\`\`yaml
 docker-compose.yml
 services:
@@ -29,7 +30,6 @@ services:
 volumes:
   node_modules:
 \`\`\`
-
 \`\`\`bash
 # Validate in CI with Dev Container CLI
 # (e.g., in GitHub Actions step)
@@ -37,7 +37,6 @@ devcontainer build --workspace-folder .
 devcontainer up --workspace-folder .
 devcontainer exec --workspace-folder . npm test
 \`\`\`
-
 \`\`\`mermaid
 flowchart TD
   A[Symptom] --> B{Slow build?}
@@ -50,8 +49,7 @@ flowchart TD
   E -->|Yes| E1[.env + secret stores; never commit]
   A --> F{Dev/CI drift?}
   F -->|Yes| F1[Dev Container CLI in CI; pin versions]
-\`\`\`
-`;
+\`\`\``;
   const mermaidRef = useRef(0);
   
   useEffect(() => {
@@ -102,12 +100,21 @@ flowchart TD
       <ReactMarkdown 
         remarkPlugins={[remarkGfm]}
         components={{
-          code({node, className, children, ...props}: any) {
-            const match = /language-(w+)/.exec(className || '');
+          code({node, inline, className, children, ...props}: any) {
+            const match = /language-(\w+)/.exec(className || '');
             const language = match ? match[1] : '';
-            const isInline = !className;
             
-            if (!isInline && language === 'mermaid') {
+            // Handle inline code
+            if (inline) {
+              return (
+                <code className={className} {...props}>
+                  {children}
+                </code>
+              );
+            }
+            
+            // Handle mermaid diagrams
+            if (language === 'mermaid') {
               return (
                 <pre className="language-mermaid">
                   <code>{String(children).replace(/\n$/, '')}</code>
@@ -115,10 +122,28 @@ flowchart TD
               );
             }
             
+            // Handle code blocks with syntax highlighting
+            if (language) {
+              return (
+                <SyntaxHighlighter
+                  language={language}
+                  style={atomDark}
+                  showLineNumbers={true}
+                  PreTag="div"
+                  {...props}
+                >
+                  {String(children).replace(/\n$/, '')}
+                </SyntaxHighlighter>
+              );
+            }
+            
+            // Default code block without highlighting
             return (
-              <code className={className} {...props}>
-                {children}
-              </code>
+              <pre>
+                <code className={className} {...props}>
+                  {children}
+                </code>
+              </pre>
             );
           }
         }}

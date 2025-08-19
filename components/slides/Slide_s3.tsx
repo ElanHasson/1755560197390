@@ -2,13 +2,14 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useEffect, useRef } from 'react';
 import mermaid from 'mermaid';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 export default function Slide() {
   const markdown = `- Why this demo matters
   - Uniform, repeatable dev env in minutes
   - Eliminate "works on my machine" by encoding tools as code
   - Fast onboarding and context switching
-
 - Steps we’ll do live
   1) Add .devcontainer/devcontainer.json
   2) Reopen in Container (VS Code)
@@ -29,7 +30,6 @@ export default function Slide() {
   }
 }
 \`\`\`
-
 - App files
 \`\`\`json
 // package.json
@@ -48,7 +48,6 @@ const app = express();
 app.get('/', (_req, res) => res.send('Hello from a reproducible devcontainer!'));
 app.listen(3000, () => console.log('Up on http://localhost:3000'));
 \`\`\`
-
 - Quick start commands
 \`\`\`bash
 # create repo skeleton
@@ -57,12 +56,10 @@ mkdir -p .devcontainer
 # add devcontainer.json, package.json, index.js (as above)
 code .   # VS Code → Command Palette → Dev Containers: Reopen in Container
 \`\`\`
-
 - Headless/CI equivalent
 \`\`\`bash
 npx @devcontainers/cli up --workspace-folder .
 \`\`\`
-
 \`\`\`mermaid
 flowchart LR
   A[Repo + .devcontainer/devcontainer.json] --> B[VS Code: Reopen in Container]
@@ -71,7 +68,6 @@ flowchart LR
   D --> E[Ready: uniform env + ports forwarded]
   E --> F[Repeatable on any machine/CI]
 \`\`\`
-
 - Key outcomes
   - Same tools and versions for everyone
   - One-click start; seconds to switch contexts
@@ -126,12 +122,21 @@ flowchart LR
       <ReactMarkdown 
         remarkPlugins={[remarkGfm]}
         components={{
-          code({node, className, children, ...props}: any) {
-            const match = /language-(w+)/.exec(className || '');
+          code({node, inline, className, children, ...props}: any) {
+            const match = /language-(\w+)/.exec(className || '');
             const language = match ? match[1] : '';
-            const isInline = !className;
             
-            if (!isInline && language === 'mermaid') {
+            // Handle inline code
+            if (inline) {
+              return (
+                <code className={className} {...props}>
+                  {children}
+                </code>
+              );
+            }
+            
+            // Handle mermaid diagrams
+            if (language === 'mermaid') {
               return (
                 <pre className="language-mermaid">
                   <code>{String(children).replace(/\n$/, '')}</code>
@@ -139,10 +144,28 @@ flowchart LR
               );
             }
             
+            // Handle code blocks with syntax highlighting
+            if (language) {
+              return (
+                <SyntaxHighlighter
+                  language={language}
+                  style={atomDark}
+                  showLineNumbers={true}
+                  PreTag="div"
+                  {...props}
+                >
+                  {String(children).replace(/\n$/, '')}
+                </SyntaxHighlighter>
+              );
+            }
+            
+            // Default code block without highlighting
             return (
-              <code className={className} {...props}>
-                {children}
-              </code>
+              <pre>
+                <code className={className} {...props}>
+                  {children}
+                </code>
+              </pre>
             );
           }
         }}

@@ -2,6 +2,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useEffect, useRef } from 'react';
 import mermaid from 'mermaid';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 export default function Slide() {
   const markdown = `- Best practices that unlock speed:
@@ -10,7 +12,6 @@ export default function Slide() {
   - Split lifecycle hooks: postCreate for one-time installs, postStart for per-run tasks.
   - Prebuild in CI/Codespaces to cache image layers and dependencies.
   - Compose for app + DB to standardize local integration tests.
-
 - Example: fast, repeatable setup
 \`\`\`json
 {
@@ -31,7 +32,6 @@ export default function Slide() {
   }
 }
 \`\`\`
-
 - Where the time savings come from
 \`\`\`mermaid
 flowchart LR
@@ -44,7 +44,6 @@ E --> F
 F --> G[Switch branch or repo]
 G --> H[Rebuild only what's changed\n~1–3 min]
 \`\`\`
-
 - Measurable impact
   - Onboarding: hours/days → minutes
   - Context switching: 30–60 min → ~2–5 min
@@ -99,12 +98,21 @@ G --> H[Rebuild only what's changed\n~1–3 min]
       <ReactMarkdown 
         remarkPlugins={[remarkGfm]}
         components={{
-          code({node, className, children, ...props}: any) {
-            const match = /language-(w+)/.exec(className || '');
+          code({node, inline, className, children, ...props}: any) {
+            const match = /language-(\w+)/.exec(className || '');
             const language = match ? match[1] : '';
-            const isInline = !className;
             
-            if (!isInline && language === 'mermaid') {
+            // Handle inline code
+            if (inline) {
+              return (
+                <code className={className} {...props}>
+                  {children}
+                </code>
+              );
+            }
+            
+            // Handle mermaid diagrams
+            if (language === 'mermaid') {
               return (
                 <pre className="language-mermaid">
                   <code>{String(children).replace(/\n$/, '')}</code>
@@ -112,10 +120,28 @@ G --> H[Rebuild only what's changed\n~1–3 min]
               );
             }
             
+            // Handle code blocks with syntax highlighting
+            if (language) {
+              return (
+                <SyntaxHighlighter
+                  language={language}
+                  style={atomDark}
+                  showLineNumbers={true}
+                  PreTag="div"
+                  {...props}
+                >
+                  {String(children).replace(/\n$/, '')}
+                </SyntaxHighlighter>
+              );
+            }
+            
+            // Default code block without highlighting
             return (
-              <code className={className} {...props}>
-                {children}
-              </code>
+              <pre>
+                <code className={className} {...props}>
+                  {children}
+                </code>
+              </pre>
             );
           }
         }}
